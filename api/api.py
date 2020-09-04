@@ -4,7 +4,7 @@ import ntpath
 import logging
 from PIL import Image
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
 
 app = Flask(__name__)
@@ -30,11 +30,93 @@ def home():
     return output
 
 @app.route('/search', methods=['GET'])
-def seatch():
+def search():
+    requestData = request.get_json()
+
+    # Check if the body has the search-keyword
+    if 'search-keyword' not in requestData:
+        return 'Input search-keyword attribute in the body'
+
+    searchKeyword = requestData['search-keyword']
+
+    searchResults = []
+
+    # Search the characteristics of the image and the image name
+    response = ImageDatabase.scan(
+        FilterExpression = Attr('imageLabels').contains(searchKeyword.title()) | Attr('imageName').contains(searchKeyword)
+    )
+
+    for item in response['Items']:
+        searchResults.append(item['imageName'])
+        print(item['imageName'])
+
     return "<h1>Search request</h1>"
 
+@app.route('/image', methods=['DELETE'])
+def delete():
+    requestData = request.get_json()
+    response = {}
 
-@app.route('/add', methods=['GET'])
+    # Check if the body has the image or delete-all attributes
+    if 'image' not in requestData and 'delete-all' not in requestData:
+        response["error"] = 'Input image or delete-all attribute in the body'
+        return jsonify(response)
+    
+    imagesToDelete = []
+
+    # Populate the imagesToDelete list
+    if 'delete-all' in requestData and requestData['delete-all'] == 'true':
+        allImages = ImageDatabase.scan()
+        for image in allImages["Items"]:
+            imagesToDelete.append(image["imageName"])
+    elif 'image' in requestData:
+        if isinstance(requestData['image'], list):
+            imagesToDelete = requestData['image']
+        else:
+            imagesToDelete.append(requestData['image']) 
+
+    # Delete the specified images
+    response["deleted_items"] = []
+    for imageToDelete in imagesToDelete:
+        deletedImage= {}
+        deletedImage["image"] = imageToDelete
+
+        deletedImage["status"] = delete_image(imageToDelete)
+
+        response["deleted_items"].append(deletedImage)
+
+    return response
+
+def delete_image(imageToDelete):
+    # Make sure that the image exists in the database
+    responseDDB = ImageDatabase.query(
+        KeyConditionExpression = Key('imageName').eq(imageToDelete)
+    )
+
+    if not responseDDB["Items"]:
+        return "Image '" + imageToDelete + "' does not exist in the database"
+    
+    responseS3 = s3Client.delete_object(
+        Bucket = imageDatabaseBucket,
+        Key = imageToDelete
+    )
+
+    if responseS3['ResponseMetadata']['HTTPStatusCode'] != 204:
+        return "Error while deleting the image '" + imageToDelete + "' from the S3 bucket"
+
+    responseDDB = ImageDatabase.delete_item(
+        Key = {
+            "imageName": imageToDelete
+        }
+    )
+
+    if responseDDB['ResponseMetadata']['HTTPStatusCode'] != 200:
+        return "Error while deleting database entry for the image '" + imageToDelete + "' from the DynamoDB table"
+    
+    return "Successfuly deleted image '" + imageToDelete + "'"
+
+
+@app.route('/image', methods=['POST'])
 def add():
     requestData = request.get_json()
 
@@ -58,7 +140,6 @@ def add():
         verify_and_add_image(imageToAdd)
 
     return 'done'
-
 
 def is_file_an_image(imagePath):
     try:
