@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import os.path
 import ntpath
 import logging
+from PIL import Image
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
@@ -47,7 +48,31 @@ def add():
     if not os.path.exists(imagePath):
         return 'Image or directory does not exist'
 
+    # Check if the path is a directory or a path to a file 
+    if os.path.isdir(imagePath):
+        for filename in os.listdir(imagePath):
+            imageToAdd = os.path.join(imagePath, filename)
+
+            verify_and_add_image(imageToAdd)
+    elif os.path.isfile(imagePath):
+        verify_and_add_image(imageToAdd)
+
+    return 'done'
+
+
+def is_file_an_image(imagePath):
+    try:
+        Image.open(imagePath)
+    except IOError:
+        return False
+    return True
+
+def verify_and_add_image(imagePath):
     fileName = ntpath.basename(imagePath)
+
+    if not is_file_an_image(imagePath):
+        print("File '" + fileName + "' is not an image")
+        return
 
     # Make sure that the image does not exist in the database
     response = ImageDatabase.query(
@@ -55,14 +80,14 @@ def add():
     )
 
     if response["Items"]:
-        return "Image with name " + fileName + " already exists in the database"
+        print("Image with name " + fileName + " already exists in the database")
+        return 
 
     labels = get_labels(imagePath)
 
     add_to_s3_and_ddb(imagePath, labels)
 
-    return 'done'
-
+    print("Added image '" + fileName + "' to the image repository.")
 
 def add_to_s3_and_ddb(imagePath, labels):
     fileName = ntpath.basename(imagePath)
@@ -78,7 +103,6 @@ def add_to_s3_and_ddb(imagePath, labels):
             'imageLabels': labels
         }
     )
-
 
 def get_labels(imagePath):
     with open(imagePath, 'rb') as image:
