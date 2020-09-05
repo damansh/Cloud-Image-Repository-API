@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 
 from api_calls.search import search_api
 from api_calls.delete import delete_api
@@ -12,6 +12,13 @@ app.config["DEBUG"] = True
 #     output = ImageDatabase.scan()
 
 #     return output
+
+@app.before_request
+def before_request():
+    if not request.get_json():
+        response = {}
+        response['error'] = "A JSON body request is required"
+        return jsonify(response)
 
 # Blueprints for APIs defined in respective .py files under api_calls folder
 app.register_blueprint(search_api)
