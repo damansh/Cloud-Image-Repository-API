@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint, request, jsonify
+from flask_api import status
 from boto3.dynamodb.conditions import Attr, Key
 from aws_clients import ImageDatabase, s3Client, imageDatabaseBucket
 
@@ -13,7 +14,7 @@ def delete():
     # Check if the body has the image or delete-all attributes
     if 'image' not in requestData and 'delete-all' not in requestData:
         response["error"] = 'Input image or delete-all attribute in the body'
-        return jsonify(response)
+        return jsonify(response), status.HTTP_400_BAD_REQUEST
     
     imagesToDelete = []
 

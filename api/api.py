@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_api import status
 
 from api_calls.search import search_api
 from api_calls.delete import delete_api
@@ -13,7 +14,7 @@ def before_request():
     if not request.get_json():
         response = {}
         response['error'] = "A JSON body request is required"
-        return jsonify(response)
+        return jsonify(response), status.HTTP_400_BAD_REQUEST
 
 # Blueprints for APIs defined in respective .py files under api_calls folder
 app.register_blueprint(search_api)

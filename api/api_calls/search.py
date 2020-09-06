@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint, request, jsonify
+from flask_api import status
 from boto3.dynamodb.conditions import Attr
 from aws_clients import ImageDatabase, imageDatabaseBucket
 import os.path
@@ -15,14 +16,17 @@ def search():
     # Check if the body has the search-keyword
     if 'search-keyword' not in requestData and 'search-image' not in requestData:
         response['error'] = 'Input search-keyword or search-image attribute in the body'
-        return response
+        return response, status.HTTP_400_BAD_REQUEST
 
     if 'search-image' in requestData:
         image_search(requestData['search-image'], response)
     elif 'search-keyword' in requestData:
         text_search(requestData['search-keyword'], response)
     
-    return response
+    if hasattr(response , 'error'):
+        return response, status.HTTP_400_BAD_REQUEST
+    else:
+        return response
 
 # Get the labels from the provided image using AWS Rekognition and check if there is a match
 # in the database

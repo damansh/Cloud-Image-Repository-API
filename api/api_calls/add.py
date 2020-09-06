@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint, request, jsonify
+from flask_api import status
 from boto3.dynamodb.conditions import Attr, Key
 import os.path
 import ntpath
@@ -16,14 +17,14 @@ def add():
     # Check if the body has the image-path
     if 'image-path' not in requestData:
         response["error"] = 'Input image-path attribute in the body'
-        return jsonify(response)
+        return jsonify(response), status.HTTP_400_BAD_REQUEST
 
     imagePath = requestData['image-path']
 
     # Check if the image or directory exists
     if not os.path.exists(imagePath):
         response["error"] =  'Image or directory does not exist'
-        return jsonify(response)
+        return jsonify(response), status.HTTP_400_BAD_REQUEST
 
     # Check if the path is a directory or a path to a file 
 
