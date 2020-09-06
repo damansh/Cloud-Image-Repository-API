@@ -7,12 +7,7 @@ from api_calls.add import add_api
 app = Flask(__name__)
 app.config["DEBUG"] = True
 
-# @app.route('/', methods=['GET'])
-# def home():
-#     output = ImageDatabase.scan()
-
-#     return output
-
+# Make sure that there is a JSON body in the API request
 @app.before_request
 def before_request():
     if not request.get_json():
