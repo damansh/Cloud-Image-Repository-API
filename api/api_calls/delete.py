@@ -12,7 +12,7 @@ def delete():
     response = {}
 
     # Check if the body has the image or delete-all attributes
-    if 'image' not in requestData and 'delete-all' not in requestData:
+    if not requestData or ('image' not in requestData and 'delete-all' not in requestData):
         response["error"] = 'Input image or delete-all attribute in the body'
         return jsonify(response), status.HTTP_400_BAD_REQUEST
     

@@ -13,14 +13,14 @@ def search():
     requestData = request.get_json()
     response = {}
 
-    # Check if the body has the search-keyword
-    if 'search-keyword' not in requestData and 'search-image' not in requestData:
-        response['error'] = 'Input search-keyword or search-image attribute in the body'
-        return response, status.HTTP_400_BAD_REQUEST
+    # If the user does not provide an image to search based on or a search query, retrieve all images
+    if 'search-image' not in request.files and ((not requestData) or (requestData and 'search-keyword' not in requestData)):
+        get_all_images(response)
+        return response
 
-    if 'search-image' in requestData:
-        image_search(requestData['search-image'], response)
-    elif 'search-keyword' in requestData:
+    if request.files and 'search-image' in request.files:
+        image_search(request.files["search-image"], response)
+    elif requestData and 'search-keyword' in requestData:
         text_search(requestData['search-keyword'], response)
     
     if hasattr(response , 'error'):
@@ -30,20 +30,13 @@ def search():
 
 # Get the labels from the provided image using AWS Rekognition and check if there is a match
 # in the database
-def image_search(imagePath, response):
-    if not os.path.exists(imagePath):
-        response["error"] =  'Image or directory does not exist'
-        return jsonify(response)
-    
-    if os.path.isdir(imagePath):
-        response["error"] =  'Filepath provided using search-image is a directory. Enter a filepath to an image'
-        return jsonify(response)
+def image_search(uploadedFile, response):
+    fileName = uploadedFile.filename
 
-    if not is_file_an_image(imagePath):
-        response["error"] =  'Image cannot be opened. Check the image file.'
-        return jsonify(response)
+    if not "image" in uploadedFile.mimetype :
+        return "File '" + fileName + "' is not an image"
     
-    labels = get_labels(imagePath)
+    labels = get_labels(uploadedFile)
 
     preparedFilterExpression = ""
     preparedExpressionAttrValues = {}
@@ -70,6 +63,11 @@ def text_search(searchKeyword, response):
         FilterExpression = Attr('imageLabels').contains(searchKeyword.title()) | Attr('imageName').contains(searchKeyword)
     )
 
+    populate_response(responseDDB, response)
+
+def get_all_images(response):
+    responseDDB = ImageDatabase.scan()
+    print(responseDDB)
     populate_response(responseDDB, response)
 
 # Populate the API response with the image URL

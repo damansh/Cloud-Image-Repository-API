@@ -15,36 +15,20 @@ def add():
     response = {}
 
     # Check if the body has the image-path
-    if 'image-path' not in requestData:
-        response["error"] = 'Input image-path attribute in the body'
+    if 'file' not in request.files:
+        response["error"] = 'Input file attribute in the body'
         return jsonify(response), status.HTTP_400_BAD_REQUEST
 
-    imagePath = requestData['image-path']
-
-    # Check if the image or directory exists
-    if not os.path.exists(imagePath):
-        response["error"] =  'Image or directory does not exist'
-        return jsonify(response), status.HTTP_400_BAD_REQUEST
-
-    # Check if the path is a directory or a path to a file 
+    uploaded_files = request.files.getlist("file")
 
     response["added_images"] = []
-    if os.path.isdir(imagePath):
-        for filename in os.listdir(imagePath):
-            deletedImage= {}
-            deletedImage["image"] = filename
+    for uploaded_file in uploaded_files:
+        addedImage= {}
+        addedImage["image"] = uploaded_file.filename
 
-            imageToAdd = os.path.join(imagePath, filename)
-            deletedImage["status"] = verify_and_add_image(imageToAdd)
+        addedImage["status"] = verify_and_add_image(uploaded_file)
 
-            response["added_images"].append(deletedImage)
-    elif os.path.isfile(imagePath):
-        deletedImage= {}
-        deletedImage["image"] = ntpath.basename(imagePath)
-
-        deletedImage["status"] = verify_and_add_image(imageToAdd)
-
-        response["added_images"].append(deletedImage)
+        response["added_images"].append(addedImage)
 
     return jsonify(response)
 
@@ -58,10 +42,10 @@ def is_file_an_image(imagePath):
 
 # Verify that the file is an image and the image doesn't currently exist in the database.
 # Then, upload the image to the DynamoDB database and the S3 bucket
-def verify_and_add_image(imagePath):
-    fileName = ntpath.basename(imagePath)
+def verify_and_add_image(uploadedFile):
+    fileName = uploadedFile.filename
 
-    if not is_file_an_image(imagePath):
+    if not "image" in uploadedFile.mimetype :
         return "File '" + fileName + "' is not an image"
 
     # Make sure that the image does not exist in the database
@@ -72,18 +56,18 @@ def verify_and_add_image(imagePath):
     if response["Items"]:
         return "Image with name " + fileName + " already exists in the database"
 
-    labels = get_labels(imagePath)
+    labels = get_labels(uploadedFile)
 
-    add_to_s3_and_ddb(imagePath, labels)
+    add_to_s3_and_ddb(uploadedFile, labels)
 
     return "Added image '" + fileName + "' to the image repository."
 
 # Open the image and upload the file to S3. Then, add item to DynamoDB table
-def add_to_s3_and_ddb(imagePath, labels):
-    fileName = ntpath.basename(imagePath)
+def add_to_s3_and_ddb(uploadedFile, labels):
+    fileName = uploadedFile.filename
 
-    with open(imagePath, 'rb') as image:
-        s3Client.upload_fileobj(image, imageDatabaseBucket, fileName)            
+    uploadedFile.seek(0)
+    s3Client.upload_fileobj(uploadedFile, imageDatabaseBucket, fileName)            
 
     s3Resource.Object(imageDatabaseBucket, fileName).wait_until_exists()
 
@@ -95,9 +79,8 @@ def add_to_s3_and_ddb(imagePath, labels):
     )
 
 # Use AWS Rekognition to get the labels of the image. Used to search for items in an image with the search API
-def get_labels(imagePath):
-    with open(imagePath, 'rb') as image:
-        response = rekognitionClient.detect_labels(Image={'Bytes': image.read()})
+def get_labels(uploadedFile):
+    response = rekognitionClient.detect_labels(Image={'Bytes': uploadedFile.read()})
 
     labels = []
 
