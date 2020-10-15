@@ -2,6 +2,7 @@ from flask import Flask, Blueprint, request, jsonify
 from flask_api import status
 from boto3.dynamodb.conditions import Attr, Key
 from aws_clients import ImageDatabase, s3Client, imageDatabaseBucket
+import api_calls.global_vars as global_vars
 
 # Define blueprint for Flask (linked to api.py)
 delete_api = Blueprint('delete_api', __name__)
@@ -51,6 +52,9 @@ def delete_image(imageToDelete):
     if not responseDDB["Items"]:
         return "Image '" + imageToDelete + "' does not exist in the database"
     
+    if responseDDB["Items"][0]["uploadedBy"] != global_vars.currentUser:
+        return "Image '" + imageToDelete + "' not uploaded by " + global_vars.currentUser + ". Image not deleted"
+
     responseS3 = s3Client.delete_object(
         Bucket = imageDatabaseBucket,
         Key = imageToDelete

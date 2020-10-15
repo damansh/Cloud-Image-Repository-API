@@ -4,6 +4,7 @@ from boto3.dynamodb.conditions import Attr
 from aws_clients import ImageDatabase, imageDatabaseBucket
 import os.path
 from api_calls.add import is_file_an_image, get_labels
+import api_calls.global_vars as global_vars
 
 # Define blueprint for Flask (linked to api.py)
 search_api = Blueprint('search_api', __name__)
@@ -67,16 +68,21 @@ def text_search(searchKeyword, response):
 
 def get_all_images(response):
     responseDDB = ImageDatabase.scan()
-    print(responseDDB)
     populate_response(responseDDB, response)
 
 # Populate the API response with the image URL
 def populate_response(responseDDB, response):
     response["matched-images"] = []
     for item in responseDDB['Items']:
-        matchedImage = {}
-        
-        matchedImage['image-name'] = item['imageName']
-        matchedImage['image-url'] = "https://%s.s3.amazonaws.com/%s" % (imageDatabaseBucket, item['imageName'])
-        
-        response["matched-images"].append(matchedImage)
+        permissionImage = item['permission']
+        uploadedByImage = item['uploadedBy']
+
+        if permissionImage == 'public' or (permissionImage == 'private' and uploadedByImage == global_vars.currentUser):
+            matchedImage = {}
+
+            matchedImage['image-name'] = item['imageName']
+            matchedImage['image-url'] = "https://%s.s3.amazonaws.com/%s" % (imageDatabaseBucket, item['imageName'])
+            matchedImage['image-permission'] = permissionImage
+            matchedImage['image-uploadedBy'] = uploadedByImage
+            
+            response["matched-images"].append(matchedImage)

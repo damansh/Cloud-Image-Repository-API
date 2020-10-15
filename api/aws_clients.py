@@ -1,9 +1,13 @@
 import boto3
 
-# AWS DynamoDB table
-tableName = "ImageDatabase"
+# ImageDatabase AWS DynamoDB table
+imageTableName = "ImageDatabase"
 ddb = boto3.resource('dynamodb', region_name='us-east-1')
-ImageDatabase = ddb.Table(tableName)
+ImageDatabase = ddb.Table(imageTableName)
+
+# Users AWS DynamoDB table
+userTableName = "UserDatabase"
+UserDatabase = ddb.Table(userTableName)
 
 # AWS Rekognition client 
 rekognitionClient = boto3.client('rekognition', region_name='us-east-1')
