@@ -1,5 +1,5 @@
-# Shopify Developer Backend Intern Challenge - Winter 2021
-An image repository accessed via REST API calls for the [Winter 2021 Intern Challenge](https://docs.google.com/document/d/1ZKRywXQLZWOqVOHC4JkF3LqdpO3Llpfk_CkZPR8bjak/edit). The hosted version of the API is hosted on Amazon Web Services (AWS) Elastic Beanstalk here: http://damanshopifychallenge-env.eba-me857gfn.us-east-1.elasticbeanstalk.com/.
+# Cloud Image Repository API
+An image repository accessed via REST API calls for the [Shopify Backend Developer Winter 2021 Intern Challenge](https://docs.google.com/document/d/1ZKRywXQLZWOqVOHC4JkF3LqdpO3Llpfk_CkZPR8bjak/edit). The hosted version of the API is hosted on Amazon Web Services (AWS) Elastic Beanstalk here: http://damanshopifychallenge-env.eba-me857gfn.us-east-1.elasticbeanstalk.com/.
 
 The image repository uses AWS DynamoDB, AWS S3, AWS Rekognition, and Flask.
 - DynamoDB: Holds imageName and the name of objects in an image.
